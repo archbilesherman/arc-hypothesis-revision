@@ -92,3 +92,32 @@ GitHub Issues serve as the source of truth for tasks, dependencies, and progress
 - Discuss significant design decisions before implementation.
 - Communicate blockers and coordinate overlapping work.
 - Keep changes focused, reviewable, and reproducible.
+
+## Environment Setup
+
+Requires Python 3.12. Dependencies are managed through `pyproject.toml` using a local virtual environment.
+
+**Windows (PowerShell)**
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+```
+
+**macOS / Linux**
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+```
+
+**VS Code:** Run `Python: Select Interpreter` and select the Python executable inside `.venv`.
+
+**Run tests:**
+```bash
+python -m pytest tests/ -v
+```
+
+Dependencies only need to be reinstalled when `pyproject.toml` changes. Do not commit `.venv`.
+
+For GPU acceleration, refer to the [PyTorch installation guide](https://pytorch.org/get-started/locally/) for CUDA (NVIDIA) or MPS (Apple Silicon).
