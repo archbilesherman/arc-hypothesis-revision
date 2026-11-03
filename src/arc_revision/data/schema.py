@@ -1,41 +1,49 @@
+
+"""Episode structure and tensor consistency checks."""
+
 from dataclasses import dataclass
+
 import torch
 from torch import Tensor
 
+from arc_revision.data.hypotheses import (
+    NUM_COLORS,
+    Hypothesis,
+    validate_hypothesis_space,
+)
 
-# Milestone 1 contrained configuration
+
 GRID_HEIGHT = 5
 GRID_WIDTH = 5
-NUM_COLORS = 10
-NUM_DEMOS = 2
-NUM_RULES = 8
+MIN_DEMOS = 2
+MAX_DEMOS = 5
 
 
 @dataclass
 class ARCEpisode:
-        
     """
-    Represents a single ARC-style learning episode.
+    One ARC episode with T demonstrations and K candidate programs.
 
-    Tensor shapes (unbatched):
+    Unbatched shapes:
         demonstrations: [T, 2, H, W] torch.long
-        query_input: [H, W] torch.long
-        query_output: [H, W] torch.long
-        rule_index: scalar int
-        valid_masks: [T, K] torch.bool
-        soft_targets: [T, K] torch.float32
+        query_input:    [H, W]       torch.long
+        query_output:   [H, W]       torch.long
+        valid_masks:    [T, K]       torch.bool
+        soft_targets:   [T, K]       torch.float32
 
-    For M1: T=2, H=W=5, K=8
+    For now: 2 <= T <= 5, H = W = 5.
+    K = len(hypotheses).
 
-    In demonstrations, dimension 1 contains the input grid at index 0 and output grid at index 1.
+    rule_index identifies the ground-truth program within hypotheses.
     """
-    
+
     demonstrations: Tensor
     query_input: Tensor
     query_output: Tensor
     rule_index: int
     valid_masks: Tensor
     soft_targets: Tensor
+    hypotheses: tuple[Hypothesis, ...]
 
     def __post_init__(self) -> None:
         self.validate()
@@ -43,16 +51,38 @@ class ARCEpisode:
     def validate(self) -> None:
         """Validate episode structure and hypothesis targets."""
 
+        validate_hypothesis_space(self.hypotheses)
+        num_rules = len(self.hypotheses)
+
+        if not isinstance(self.demonstrations, Tensor):
+            raise TypeError(
+                "demonstrations must be a PyTorch tensor"
+            )
+
+        if self.demonstrations.ndim != 4:
+            raise ValueError(
+                "demonstrations must have four dimensions"
+            )
+
+        num_demos = self.demonstrations.shape[0]
+
+        if not MIN_DEMOS <= num_demos <= MAX_DEMOS:
+            raise ValueError(
+                f"Episode must contain {MIN_DEMOS}-{MAX_DEMOS} demonstrations"
+            )
+
         self._validate_grid(
             "demonstrations",
             self.demonstrations,
-            (NUM_DEMOS, 2, GRID_HEIGHT, GRID_WIDTH),
+            (num_demos, 2, GRID_HEIGHT, GRID_WIDTH),
         )
+
         self._validate_grid(
             "query_input",
             self.query_input,
             (GRID_HEIGHT, GRID_WIDTH),
         )
+
         self._validate_grid(
             "query_output",
             self.query_output,
@@ -62,35 +92,41 @@ class ARCEpisode:
         if type(self.rule_index) is not int:
             raise TypeError("rule_index must be an integer")
 
-        if not 0 <= self.rule_index < NUM_RULES:
+        if not 0 <= self.rule_index < num_rules:
             raise ValueError(
-                f"rule_index must be between 0 and {NUM_RULES - 1}"
+                f"rule_index must be between 0 and {num_rules - 1}"
             )
 
         self._validate_tensor(
             "valid_masks",
             self.valid_masks,
-            (NUM_DEMOS, NUM_RULES),
+            (num_demos, num_rules),
             torch.bool,
         )
+
         self._validate_tensor(
             "soft_targets",
             self.soft_targets,
-            (NUM_DEMOS, NUM_RULES),
+            (num_demos, num_rules),
             torch.float32,
         )
 
         if not torch.isfinite(self.soft_targets).all().item():
-            raise ValueError("soft_targets must contain finite values")
+            raise ValueError(
+                "soft_targets must contain finite values"
+            )
 
         if (self.soft_targets < 0).any().item():
-            raise ValueError("soft_targets cannot be negative")
-
-        target_sums = self.soft_targets.sum(dim=-1)
+            raise ValueError(
+                "soft_targets cannot be negative"
+            )
 
         if not torch.allclose(
-            target_sums,
-            torch.ones_like(target_sums),
+            self.soft_targets.sum(dim=-1),
+            torch.ones(
+                num_demos,
+                device=self.soft_targets.device,
+            ),
             atol=1e-5,
         ):
             raise ValueError(
@@ -123,10 +159,12 @@ class ARCEpisode:
         expected_shape: tuple[int, ...],
         expected_dtype: torch.dtype,
     ) -> None:
-        """Validate a tensor's type, shape, and dtype."""
+        """Validate tensor type, shape, and dtype."""
 
         if not isinstance(value, Tensor):
-            raise TypeError(f"{name} must be a PyTorch tensor")
+            raise TypeError(
+                f"{name} must be a PyTorch tensor"
+            )
 
         if tuple(value.shape) != expected_shape:
             raise ValueError(
@@ -150,11 +188,14 @@ class ARCEpisode:
         """Validate a grid tensor and its color values."""
 
         cls._validate_tensor(
-            name, value, expected_shape, torch.long
+            name,
+            value,
+            expected_shape,
+            torch.long,
         )
 
         if ((value < 0) | (value >= NUM_COLORS)).any().item():
             raise ValueError(
                 f"{name} must contain colors from "
                 f"0 to {NUM_COLORS - 1}"
-            )      
+            )

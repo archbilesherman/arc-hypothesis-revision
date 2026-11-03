@@ -121,3 +121,29 @@ python -m pytest tests/ -v
 Dependencies only need to be reinstalled when `pyproject.toml` changes. Do not commit `.venv`.
 
 For GPU acceleration, refer to the [PyTorch installation guide](https://pytorch.org/get-started/locally/) for CUDA (NVIDIA) or MPS (Apple Silicon).
+
+## Dataset Reproducibility
+
+Synthetic datasets use fixed seeds and are saved as versioned snapshots to ensure consistent comparisons across experiments.
+
+**Generate the initial dataset:**
+
+```bash
+python -c "from arc_revision.data.generator import save_dataset; save_dataset('data/generated/v1')"
+```
+
+**Load a saved split:**
+
+```python
+from arc_revision.data.generator import load_split
+
+episodes = load_split("data/generated/v1", "train")
+```
+
+The default configuration generates 20,000 training, 2,000 validation, and 2,000 test episodes, with 60% controlled ambiguity and 2–5 demonstrations per episode.
+
+- Reuse saved datasets across model experiments; do not regenerate them between comparisons.
+- Dataset snapshots include generation metadata and SHA-256 checksums.
+- Generated datasets are excluded from Git. Preserve and share snapshots separately.
+- Changes to data-generation methodology require a new version directory (`v2`, `v3`, etc.).
+- Record the dataset version and experiment configuration when reporting results.
