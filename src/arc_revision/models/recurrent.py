@@ -21,8 +21,11 @@ class SequentialGRUHypothesisClassifier(nn.Module):
         demonstration_dim: int = 128,
         hidden_dim: int = 128,
         program_dim: int = 128,
+        num_gru_layers: int = 1,
     ) -> None:
         super().__init__()
+        if type(num_gru_layers) is not int or num_gru_layers < 1:
+            raise ValueError("num_gru_layers must be a positive integer")
 
         self.demonstration_encoder = SharedCNNGridEncoder(
             embedding_dim=demonstration_dim
@@ -33,6 +36,7 @@ class SequentialGRUHypothesisClassifier(nn.Module):
             hidden_size=hidden_dim,
             batch_first=True,
             bidirectional=False,
+            num_layers=num_gru_layers,
         )
 
         self.program_encoder = ProgramEncoder(

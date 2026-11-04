@@ -1,0 +1,25 @@
+
+experiment:
+  name: baseline
+  objective: baseline
+  seed: 42
+
+data:
+  snapshot_dir: data/generated/v1
+  train_size: 20000
+  validation_size: 2000
+
+model:
+  demonstration_dim: 128
+  hidden_dim: 128
+  program_dim: 128
+  gru_layers: 1
+
+training:
+  epochs: 5
+  batch_size: 32
+  learning_rate: 0.001
+  lambda_revision: 0.0
+  device: cpu
+
+output_dir: runs/baseline
