@@ -147,3 +147,24 @@ The default configuration generates 20,000 training, 2,000 validation, and 2,000
 - Generated datasets are excluded from Git. Preserve and share snapshots separately.
 - Changes to data-generation methodology require a new version directory (`v2`, `v3`, etc.).
 - Record the dataset version and experiment configuration when reporting results.
+
+
+## Evaluation Reproducibility
+
+Evaluation must use the fixed, held-out `test` split from the same versioned dataset snapshot used during training.
+
+- Select model checkpoints using validation performance, not test performance.
+- Use the same test split and evaluation procedure for baseline and revision-aware models.
+- Do not use held-out test results for hyperparameter tuning or model selection.
+- Record the checkpoint, dataset version, configuration, and evaluation metrics for each experiment.
+- Report final program accuracy, query-grid exact-match accuracy, and intermediate hypothesis consistency.
+- Preserve breakdowns by ambiguity and number of demonstrations (2–5).
+
+Run evaluations using:
+
+```bash
+python -m scripts.evaluate --checkpoint runs/baseline/best.pt --output runs/baseline/test_metrics.json
+python -m scripts.evaluate --checkpoint runs/revision/best.pt --output runs/revision/test_metrics.json
+```
+
+Evaluation results and checkpoints are stored locally under `runs/` and should not be committed.

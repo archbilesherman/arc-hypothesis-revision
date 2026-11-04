@@ -30,3 +30,36 @@ We compare two training objectives under equivalent architectures and computatio
 - **Revision-aware model:** Additionally receives intermediate supervision on hypotheses consistent with the evidence observed so far.
 
 Intermediate targets
+
+
+## Running the Prototype
+
+Install the project using Python 3.12:
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+Generate the fixed synthetic dataset once:
+
+```bash
+python -c "from arc_revision.data.generator import save_dataset; save_dataset('data/generated/v1')"
+```
+
+Train the two experimental conditions:
+
+```bash
+python scripts/train.py --config configs/baseline.yaml
+python scripts/train.py --config configs/revision.yaml
+```
+
+Evaluate the selected checkpoints on the held-out test split:
+
+```bash
+python -m scripts.evaluate --checkpoint runs/baseline/best.pt --output runs/baseline/test_metrics.json
+python -m scripts.evaluate --checkpoint runs/revision/best.pt --output runs/revision/test_metrics.json
+```
+
+Both training conditions use the same saved dataset and model architecture. Evaluation reports final program accuracy, query-grid exact-match accuracy, and intermediate valid-hypothesis probability mass, with breakdowns by ambiguity and demonstration count.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development conventions and reproducibility requirements.
