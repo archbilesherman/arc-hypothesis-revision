@@ -152,6 +152,7 @@ def evaluate_checkpoint(
         hidden_dim=options["hidden_dim"],
         program_dim=options["program_dim"],
         num_gru_layers=options["gru_layers"],
+        scoring_head=options.get("scoring_head", "dot_product"),
     ).to(device)
 
     model.load_state_dict(checkpoint["model_state_dict"])

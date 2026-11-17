@@ -8,6 +8,7 @@ from arc_revision.data.dataset import (
 from arc_revision.data.encoding import OP_IDS
 from arc_revision.data.generator import generate_episode
 from arc_revision.models.recurrent import (
+    CandidateBeliefHead,
     SequentialGRUHypothesisClassifier,
 )
 
@@ -283,3 +284,64 @@ def test_empty_candidate_set_is_rejected(mixed_batch):
         ValueError, match="at least one candidate"
     ):
         model(*args)
+
+
+def test_candidate_belief_head():
+    torch.manual_seed(42)
+
+    model = CandidateBeliefHead(
+        demo_dim=32,
+        task_dim=64,
+        program_dim=16,
+        belief_dim=48,
+    )
+
+    demos = torch.randn(3, 5, 32)
+    tasks = torch.randn(3, 5, 64)
+    programs = torch.randn(3, 7, 16)
+
+    demo_mask = torch.tensor([
+        [1, 1, 0, 0, 0],
+        [1, 1, 1, 1, 0],
+        [1, 1, 1, 1, 1],
+    ], dtype=torch.bool)
+
+    candidate_mask = torch.tensor([
+        [1, 1, 1, 0, 0, 0, 0],
+        [1, 1, 1, 1, 1, 0, 0],
+        [1, 1, 1, 1, 1, 1, 1],
+    ], dtype=torch.bool)
+
+    scores = model(
+        demos, tasks, programs,
+        demo_mask, candidate_mask,
+    )
+
+    assert scores.shape == (3, 5, 7)
+    assert (scores[0, :, 3:] < -1e25).all()
+
+    # Verify that gradients reach the recurrent parameters.
+    last_steps = demo_mask.sum(dim=1) - 1
+    final_scores = scores[torch.arange(3), last_steps]
+
+    loss = torch.nn.functional.cross_entropy(
+        final_scores,
+        torch.tensor([1, 3, 6]),
+    )
+    loss.backward()
+
+    assert model.cell.weight_ih.grad is not None
+    assert model.cell.weight_hh.grad is not None
+
+    # Changing padded evidence must not change predictions.
+    altered_demos = demos.clone()
+    altered_tasks = tasks.clone()
+    altered_demos[0, 2:] = 1000
+    altered_tasks[0, 2:] = 1000
+
+    altered_scores = model(
+        altered_demos, altered_tasks, programs,
+        demo_mask, candidate_mask,
+    )
+
+    assert torch.allclose(scores[0], altered_scores[0])

@@ -222,3 +222,6 @@ __marimo__/
 data/generated/
 runs/
 checkpoints/
+
+# Local experiment artifacts
+/experiments/

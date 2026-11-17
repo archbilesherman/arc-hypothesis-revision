@@ -14,12 +14,13 @@ model:
   hidden_dim: 128
   program_dim: 128
   gru_layers: 1
+  scoring_head: candidate_gru
 
 training:
-  epochs: 5
+  epochs: 15
   batch_size: 32
   learning_rate: 0.001
   lambda_revision: 0.0
   device: cpu
 
-output_dir: runs/baseline
+output_dir: experiments/004-candidate-belief-updates/baseline
