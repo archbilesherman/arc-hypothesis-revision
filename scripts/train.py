@@ -198,6 +198,7 @@ def run_experiment(config: dict) -> Path:
         hidden_dim=options["hidden_dim"],
         program_dim=options["program_dim"],
         num_gru_layers=options["gru_layers"],
+        scoring_head=options.get("scoring_head", "dot_product"),
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=train["learning_rate"])
 
